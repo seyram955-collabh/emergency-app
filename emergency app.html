@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Volta Emergency">
+<!-- Primary theme color for supported browsers. Firefox does not currently honor this; add MS tile color as a fallback. -->
+<!-- theme-color is handled in manifest.json for broader browser compatibility. Firefox and Opera do not support this meta tag -->
+<meta name="msapplication-TileColor" content="#020c1b">
+<title>Volta Lake Emergency</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --deep-navy: #020c1b;
+    --navy: #0a1628;
+    --blue-dark: #0d2137;
+    --accent-cyan: #00d4ff;
+    --accent-teal: #00b4a0;
+    --sos-orange: #ff7c1f;
+    --fire-red: #ff2d2d;
+    --med-blue: #1a8fff;
+    --sink-purple: #8b5cf6;
+    --success: #00c97a;
+    --text-primary: #e8f4ff;
+    --text-secondary: #7aa3c8;
+    --glass: rgba(13,33,55,0.7);
+    --glass-border: rgba(0,212,255,0.15);
+  }
+ 
+  * { margin:0; padding:0; box-sizing:border-box; }
+ 
+  body {
+    min-height: 100vh;
+    background: var(--deep-navy);
+    font-family: 'Barlow', sans-serif;
+    color: var(--text-primary);
+    overflow-x: hidden;
+  }
+ 
+  /* Animated background */
+  .bg-layer {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 40%, rgba(0,180,160,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 60%, rgba(0,100,200,0.15) 0%, transparent 60%),
+      linear-gradient(180deg, #020c1b 0%, #061424 100%);
+  }
+ 
+  .wave {
+    position: fixed; bottom: 0; left: 0; width: 200%; height: 120px; z-index: 0;
+    opacity: 0.08;
+    animation: wave-move 8s linear infinite;
+  }
+  .wave2 { animation-duration: 12s; animation-direction: reverse; opacity: 0.05; bottom: 20px; }
+ 
+  @keyframes wave-move {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+ 
+  .radar-ring {
+    position: fixed; top: -100px; right: -100px; width: 500px; height: 500px; z-index: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(0,212,255,0.06);
+    animation: radar-pulse 4s ease-in-out infinite;
+  }
+  .radar-ring:nth-child(2) { width: 350px; height: 350px; top: -60px; right: -60px; animation-delay: 1s; }
+  .radar-ring:nth-child(3) { width: 200px; height: 200px; top: -20px; right: -20px; animation-delay: 2s; }
+ 
+  @keyframes radar-pulse {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.1; transform: scale(1.05); }
+  }
+ 
+  /* Layout */
+  .app-wrapper {
+    position: relative; z-index: 1;
+    max-width: 680px; margin: 0 auto; padding: 20px 16px 40px;
+    min-height: 100vh;
+  }
+ 
+  /* Header */
+  .header {
+    text-align: center; padding: 30px 0 24px;
+  }
+ 
+  .header-icon {
+    font-size: 42px; display: block; margin-bottom: 8px;
+    animation: bob 3s ease-in-out infinite;
+  }
+ 
+  @keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+ 
+  .header h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 32px; font-weight: 800; letter-spacing: 1px;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent-cyan) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-transform: uppercase;
+  }
+ 
+  .header p {
+    color: var(--text-secondary); font-size: 13px; letter-spacing: 2px;
+    text-transform: uppercase; margin-top: 6px;
+  }
+ 
+  /* Status bar */
+  .status-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    background: rgba(0,201,122,0.1); border: 1px solid rgba(0,201,122,0.3);
+    border-radius: 50px; padding: 10px 20px; margin-bottom: 24px;
+    font-size: 13px; font-weight: 600; color: var(--success); letter-spacing: 1px;
+  }
+ 
+  .pulse-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--success);
+    box-shadow: 0 0 0 0 rgba(0,201,122,0.5);
+    animation: pulse-anim 2s infinite;
+  }
+ 
+  @keyframes pulse-anim {
+    0% { box-shadow: 0 0 0 0 rgba(0,201,122,0.5); }
+    70% { box-shadow: 0 0 0 8px rgba(0,201,122,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,201,122,0); }
+  }
+ 
+  /* Card */
+  .card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-radius: 20px; padding: 24px; margin-bottom: 16px;
+  }
+ 
+  .card-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px; font-weight: 600; letter-spacing: 3px;
+    color: var(--accent-cyan); text-transform: uppercase; margin-bottom: 16px;
+  }
+ 
+  /* Inputs */
+  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+ 
+  @media (max-width: 480px) { .input-row { grid-template-columns: 1fr; } }
+ 
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+ 
+  .input-group label {
+    font-size: 11px; font-weight: 600; letter-spacing: 2px;
+    color: var(--text-secondary); text-transform: uppercase;
+  }
+ 
+  .input-group input, .input-group select {
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 10px; padding: 12px 14px; color: var(--text-primary);
+    font-family: 'Barlow', sans-serif; font-size: 14px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+ 
+  .input-group input::placeholder { color: rgba(122,163,200,0.4); }
+ 
+  .input-group input:focus, .input-group select:focus {
+    border-color: var(--accent-cyan);
+    box-shadow: 0 0 0 3px rgba(0,212,255,0.1);
+  }
+ 
+  .input-group select option { background: var(--navy); color: var(--text-primary); }
+ 
+  /* Alert buttons */
+  .alert-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+ 
+  @media (max-width: 420px) { .alert-grid { grid-template-columns: 1fr; } }
+ 
+  .alert-btn {
+    position: relative; overflow: hidden;
+    border: none; border-radius: 16px; padding: 20px 16px;
+    cursor: pointer; transition: transform 0.15s, box-shadow 0.2s;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+ 
+  .alert-btn:hover { transform: translateY(-2px); }
+  .alert-btn:active { transform: scale(0.97); }
+ 
+  .alert-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: rgba(255,255,255,0.08);
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .alert-btn:hover::before { opacity: 1; }
+ 
+  .alert-btn .btn-icon { font-size: 28px; }
+  .alert-btn .btn-label {
+    font-size: 15px; font-weight: 700; color: #fff;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .alert-btn .btn-sub {
+    font-family: 'Barlow', sans-serif;
+    font-size: 10px; color: rgba(255,255,255,0.65);
+    letter-spacing: 1px;
+  }
+ 
+  .btn-sos {
+    background: linear-gradient(135deg, #ff9500, #ff5800);
+    box-shadow: 0 4px 20px rgba(255,100,0,0.3);
+    grid-column: span 2;
+  }
+  .btn-sos:hover { box-shadow: 0 6px 30px rgba(255,100,0,0.5); }
+ 
+  .btn-fire {
+    background: linear-gradient(135deg, #ff3b30, #a80000);
+    box-shadow: 0 4px 16px rgba(255,0,0,0.25);
+  }
+  .btn-fire:hover { box-shadow: 0 6px 25px rgba(255,0,0,0.4); }
+ 
+  .btn-med {
+    background: linear-gradient(135deg, #1a8fff, #0044bb);
+    box-shadow: 0 4px 16px rgba(0,100,255,0.25);
+  }
+  .btn-med:hover { box-shadow: 0 6px 25px rgba(0,100,255,0.4); }
+ 
+  .btn-sink {
+    background: linear-gradient(135deg, #8b5cf6, #4c1d95);
+    box-shadow: 0 4px 16px rgba(139,92,246,0.25);
+    grid-column: span 2;
+  }
+  .btn-sink:hover { box-shadow: 0 6px 25px rgba(139,92,246,0.4); }
+ 
+  /* Loading */
+  .loading-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(2,12,27,0.85);
+    -webkit-backdrop-filter: blur(4px); /* Safari support */
+    backdrop-filter: blur(4px);
+    flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+  }
+  .loading-overlay.active { display: flex; }
+ 
+  .spinner {
+    width: 50px; height: 50px;
+    border: 3px solid rgba(0,212,255,0.2);
+    border-top-color: var(--accent-cyan);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+ 
+  .loading-text {
+    color: var(--accent-cyan); font-size: 14px; font-weight: 600;
+    letter-spacing: 2px; text-transform: uppercase;
+    animation: blink 1.5s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+ 
+  /* Alert result */
+  .alert-result {
+    display: none; border-radius: 16px; overflow: hidden;
+    margin-bottom: 16px; animation: slide-in 0.4s ease;
+  }
+  .alert-result.active { display: block; }
+ 
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+ 
+  .result-header {
+    padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+  }
+ 
+  .result-body {
+    background: rgba(0,0,0,0.3); padding: 16px 20px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+ 
+  @media (max-width: 480px) { .result-body { grid-template-columns: 1fr; } }
+ 
+  .result-field { display: flex; flex-direction: column; gap: 3px; }
+  .result-field .field-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  .result-field .field-val {
+    font-size: 14px; font-weight: 500; color: var(--text-primary);
+    word-break: break-all;
+  }
+ 
+  .result-actions {
+    background: rgba(0,0,0,0.2); padding: 14px 20px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+ 
+  .result-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px; border-radius: 8px; text-decoration: none;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+    transition: opacity 0.2s;
+  }
+  .result-link:hover { opacity: 0.8; }
+  .link-map { background: rgba(0,212,255,0.15); color: var(--accent-cyan); border: 1px solid rgba(0,212,255,0.3); }
+  .link-call { background: rgba(0,201,122,0.15); color: var(--success); border: 1px solid rgba(0,201,122,0.3); }
+ 
+  /* AI message */
+  .ai-message {
+    background: rgba(0,180,160,0.08); border: 1px solid rgba(0,180,160,0.2);
+    border-radius: 12px; padding: 14px 16px; margin: 12px 20px 0;
+  }
+  .ai-message .ai-label {
+    font-size: 10px; letter-spacing: 2px; color: var(--accent-teal);
+    text-transform: uppercase; font-weight: 600; margin-bottom: 6px;
+  }
+  .ai-message .ai-text {
+    font-size: 13px; line-height: 1.6; color: var(--text-primary);
+  }
+ 
+  /* History */
+  .history-list { display: flex; flex-direction: column; gap: 10px; }
+ 
+  .history-item {
+    background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 14px;
+    animation: fade-in 0.3s ease;
+  }
+ 
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+ 
+  .history-badge {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+ 
+  .history-info { flex: 1; min-width: 0; }
+  .history-type { font-weight: 600; font-size: 13px; }
+  .history-meta { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+ 
+  .history-time {
+    font-size: 10px; color: var(--text-secondary);
+    text-align: right; flex-shrink: 0;
+  }
+ 
+  .empty-state {
+    text-align: center; padding: 24px; color: var(--text-secondary);
+    font-size: 13px;
+  }
+ 
+  .clear-btn {
+    background: rgba(255,50,50,0.1); border: 1px solid rgba(255,50,50,0.2);
+    color: rgba(255,100,100,0.8); border-radius: 8px; padding: 6px 14px;
+    cursor: pointer; font-size: 11px; letter-spacing: 1px;
+    font-family: 'Barlow', sans-serif; transition: all 0.2s;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .clear-btn:hover { background: rgba(255,50,50,0.2); }
+ 
+  .card-header-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .card-header-row .card-title {
+    margin-bottom: 0;
+  }
+ 
+  .footer {
+    text-align: center; color: rgba(122,163,200,0.4);
+    font-size: 11px; letter-spacing: 1px; padding-top: 10px;
+  }
+ 
+  /* ── MOBILE OPTIMIZATIONS ── */
+ 
+  /* Safe area insets for notch/home bar */
+  .app-wrapper {
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(40px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+ 
+  /* Larger touch targets on mobile */
+  @media (max-width: 600px) {
+    .alert-btn { padding: 22px 14px; min-height: 90px; }
+    .alert-btn .btn-icon { font-size: 32px; }
+    .alert-btn .btn-label { font-size: 16px; }
+    .input-group input, .input-group select { padding: 16px 14px; font-size: 16px; } /* 16px prevents iOS zoom */
+    .header h1 { font-size: 26px; }
+    .card { padding: 18px; }
+    .result-body { grid-template-columns: 1fr; }
+  }
+ 
+  /* Bottom nav bar for mobile */
+  .bottom-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(10,22,40,0.96);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0,212,255,0.15);
+    padding: 10px 0;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    z-index: 50;
+    justify-content: space-around;
+  }
+ 
+  @media (max-width: 600px) {
+    .bottom-nav { display: flex; }
+    .app-wrapper { padding-bottom: max(90px, calc(70px + env(safe-area-inset-bottom))); }
+  }
+ 
+  .bnav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    cursor: pointer; padding: 4px 16px; border-radius: 10px;
+    transition: background .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bnav-item.active { background: rgba(0,212,255,0.1); }
+  .bnav-icon { font-size: 20px; }
+  .bnav-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text-secondary); text-transform: uppercase; }
+  .bnav-item.active .bnav-label { color: var(--accent-cyan); }
+ 
+  /* Sections shown/hidden by bottom nav */
+  .mobile-section { display: block; }
+  @media (max-width: 600px) {
+    .mobile-section { display: none; }
+    .mobile-section.mobile-active { display: block; }
+  }
+ 
+  /* Prevent tap delay */
+  * { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+ 
+  /* Smooth scroll for mobile */
+  html { scroll-behavior: smooth; }
+ 
+  /* Bigger history items on mobile */
+  @media (max-width: 600px) {
+    .history-item { padding: 14px 14px; }
+    .history-badge { width: 42px; height: 42px; font-size: 20px; }
+    .history-type { font-size: 14px; }
+    .history-meta { font-size: 12px; }
+  }
+ 
+  /* Pull-to-refresh indicator */
+  .ptr-indicator {
+    text-align: center; padding: 12px;
+    color: var(--accent-cyan); font-size: 12px; font-weight: 600;
+    letter-spacing: 2px; display: none;
+  }
+  .ptr-indicator.visible { display: block; }
+</style>
+</head>
+<body>
+ 
+<div class="bg-layer"></div>
+<div class="radar-ring"></div>
+<div class="radar-ring"></div>
+<div class="radar-ring"></div>
+ 
+<!-- Wave SVG -->
+<svg class="wave" viewBox="0 0 1440 120" preserveAspectRatio="none">
+  <path fill="var(--accent-cyan)" d="M0,60 C240,120 480,0 720,60 C960,120 1200,0 1440,60 L1440,120 L0,120 Z"/>
+</svg>
+<svg class="wave wave2" viewBox="0 0 1440 120" preserveAspectRatio="none">
+  <path fill="var(--accent-teal)" d="M0,40 C300,100 600,0 900,60 C1200,120 1350,20 1440,50 L1440,120 L0,120 Z"/>
+</svg>
+ 
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Acquiring GPS signal...</div>
+</div>
+ 
+<div class="app-wrapper">
+ 
+  <!-- Header -->
+  <div class="header">
+    <span class="header-icon">🚤</span>
+    <h1>Volta Lake Emergency</h1>
+    <p>Boat Safety &amp; Response System</p>
+  </div>
+ 
+  <!-- Status bar -->
+  <div class="status-bar" id="statusBar">
+    <div class="pulse-dot" id="statusDot"></div>
+    <span id="statusText">CHECKING SERVER CONNECTION...</span>
+  </div>
+ 
+  <!-- Alert result (shown after alert) -->
+  <div class="alert-result" id="alertResult"></div>
+ 
+  <!-- Boat info card -->
+  <div class="card mobile-section mobile-active" id="ms-alert">
+    <div class="card-title">⚓ Vessel Information</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>Boat ID / Registration</label>
+        <input id="boatId" placeholder="e.g. VL-2045" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <label>Passenger Name</label>
+        <input id="passengerName" placeholder="Full name" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <label>No. of People Onboard</label>
+        <input id="paxCount" type="number" placeholder="e.g. 8" min="1" autocomplete="off">
+      </div>
+      <div class="input-group">
+        <label for="vesselType">Vessel Type</label>
+        <select id="vesselType" aria-label="Vessel Type">
+          <option value="Fishing Boat">Fishing Boat</option>
+          <option value="Passenger Canoe">Passenger Canoe</option>
+          <option value="Cargo Vessel">Cargo Vessel</option>
+          <option value="Ferry">Ferry</option>
+          <option value="Speedboat">Speedboat</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- Emergency buttons card -->
+  <div class="card mobile-section mobile-active" id="ms-alert2">
+    <div class="card-title">🚨 Send Emergency Alert</div>
+    <div class="alert-grid">
+      <button class="alert-btn btn-sos" onclick="sendAlert('SOS EMERGENCY','🚨','+233241111111')">
+        <span class="btn-icon">🚨</span>
+        <span class="btn-label">SOS Emergency</span>
+        <span class="btn-sub">General distress signal</span>
+      </button>
+      <button class="alert-btn btn-fire" onclick="sendAlert('FIRE ALERT','🔥','+233242222222')">
+        <span class="btn-icon">🔥</span>
+        <span class="btn-label">Fire Alert</span>
+        <span class="btn-sub">Vessel fire emergency</span>
+      </button>
+      <button class="alert-btn btn-med" onclick="sendAlert('MEDICAL EMERGENCY','⚕️','+233243333333')">
+        <span class="btn-icon">⚕️</span>
+        <span class="btn-label">Medical Alert</span>
+        <span class="btn-sub">Urgent medical help</span>
+      </button>
+      <button class="alert-btn btn-sink" onclick="sendAlert('BOAT SINKING ALERT','🚢','+233244444444')">
+        <span class="btn-icon">🚢</span>
+        <span class="btn-label">Boat Sinking</span>
+        <span class="btn-sub">Vessel taking on water</span>
+      </button>
+    </div>
+  </div>
+ 
+  <!-- Alert History card -->
+  <div class="card mobile-section" id="ms-history">
+    <div class="card-header-row">
+      <div class="card-title" style="margin-bottom:0">📋 Alert History</div>
+      <button class="clear-btn" onclick="clearHistory()">Clear All</button>
+    </div>
+    <div id="historyList" class="history-list">
+      <div class="empty-state">No alerts dispatched yet.</div>
+    </div>
+  </div>
+ 
+  <!-- ── BOTTOM NAV (mobile only) ── -->
+  <nav class="bottom-nav">
+    <div class="bnav-item active" onclick="mobileNav('alert',this)">
+      <div class="bnav-icon">🚨</div>
+      <div class="bnav-label">Alert</div>
+    </div>
+    <div class="bnav-item" onclick="mobileNav('history',this)">
+      <div class="bnav-icon">📋</div>
+      <div class="bnav-label">History</div>
+    </div>
+    <div class="bnav-item" onclick="mobileNav('info',this)">
+      <div class="bnav-icon">ℹ️</div>
+      <div class="bnav-label">Info</div>
+    </div>
+  </nav>
+ 
+</div><!-- end app-wrapper -->
+ 
+<script>
+// ═══════════════════════════════════════════════════
+//  CONFIG — update BACKEND_URL when you deploy
+// ═══════════════════════════════════════════════════
+const BACKEND_URL = 'http://localhost:3000'; // ← change to your Railway/Render URL in production
+ 
+const ALERT_CONFIG = {
+  'SOS EMERGENCY':      { color: '#ff7c1f', bg: 'linear-gradient(135deg,#ff9500,#ff5800)', icon: '🚨' },
+  'FIRE ALERT':         { color: '#ff2d2d', bg: 'linear-gradient(135deg,#ff3b30,#a80000)', icon: '🔥' },
+  'MEDICAL EMERGENCY':  { color: '#1a8fff', bg: 'linear-gradient(135deg,#1a8fff,#0044bb)', icon: '⚕️' },
+  'BOAT SINKING ALERT': { color: '#8b5cf6', bg: 'linear-gradient(135deg,#8b5cf6,#4c1d95)', icon: '🚢' },
+};
+ 
+// ═══════════════════════════════════════════════════
+//  Backend connection status check on load
+// ═══════════════════════════════════════════════════
+async function checkBackendStatus() {
+  const bar = document.getElementById('statusBar');
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  try {
+    const res = await fetch(`${BACKEND_URL}/health`, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      bar.style.background    = 'rgba(0,201,122,0.1)';
+      bar.style.borderColor   = 'rgba(0,201,122,0.3)';
+      dot.style.background    = '#00c97a';
+      txt.style.color         = '#00c97a';
+      txt.textContent         = 'SYSTEM ONLINE — BACKEND CONNECTED';
+    } else { throw new Error(); }
+  } catch {
+    bar.style.background    = 'rgba(255,60,60,0.1)';
+    bar.style.borderColor   = 'rgba(255,60,60,0.3)';
+    dot.style.background    = '#ff3c3c';
+    dot.style.animation     = 'none';
+    txt.style.color         = '#ff6b6b';
+    txt.textContent         = 'BACKEND OFFLINE — START YOUR SERVER';
+  }
+}
+ 
+// ═══════════════════════════════════════════════════
+//  History — loaded from backend, cached locally
+// ═══════════════════════════════════════════════════
+async function loadHistory() {
+  const list = document.getElementById('historyList');
+  list.innerHTML = '<div class="empty-state">Loading history...</div>';
+  try {
+    const res   = await fetch(`${BACKEND_URL}/api/alert/history?limit=20`);
+    const data  = await res.json();
+    if (!data.success || !data.alerts.length) {
+      list.innerHTML = '<div class="empty-state">No alerts dispatched yet.</div>';
+      return;
+    }
+    list.innerHTML = data.alerts.map(item => {
+      const cfg = ALERT_CONFIG[item.type] || { icon: '⚠️', color: '#aaa' };
+      const smsIcon = item.sms_status === 'sent' ? '📱✅' : item.sms_status === 'failed' ? '📱❌' : '📱⏳';
+      return `<div class="history-item">
+        <div class="history-badge" style="background:${cfg.color}22;border:1px solid ${cfg.color}44">${cfg.icon}</div>
+        <div class="history-info">
+          <div class="history-type" style="color:${cfg.color}">${item.type}</div>
+          <div class="history-meta">Boat: ${item.boat_id} · ${item.passenger} · ${item.pax_count} pax · ${smsIcon} SMS</div>
+        </div>
+        <div class="history-time">${item.created_at}</div>
+      </div>`;
+    }).join('');
+  } catch {
+    // Fallback to localStorage if backend is offline
+    const raw = localStorage.getItem('voltaAlertHistory');
+    if (!raw) { list.innerHTML = '<div class="empty-state">No alerts dispatched yet.</div>'; return; }
+    const items = JSON.parse(raw);
+    list.innerHTML = items.slice().reverse().map(item => {
+      const cfg = ALERT_CONFIG[item.type] || { icon: '⚠️', color: '#aaa' };
+      return `<div class="history-item">
+        <div class="history-badge" style="background:${cfg.color}22;border:1px solid ${cfg.color}44">${cfg.icon}</div>
+        <div class="history-info">
+          <div class="history-type" style="color:${cfg.color}">${item.type}</div>
+          <div class="history-meta">Boat: ${item.boatId} · ${item.passenger} · ${item.pax} pax · (offline cache)</div>
+        </div>
+        <div class="history-time">${item.time}</div>
+      </div>`;
+    }).join('');
+  }
+}
+ 
+function saveToLocalCache(data) {
+  const raw   = localStorage.getItem('voltaAlertHistory');
+  const items = raw ? JSON.parse(raw) : [];
+  items.push(data);
+  localStorage.setItem('voltaAlertHistory', JSON.stringify(items));
+}
+ 
+function clearHistory() {
+  if (confirm('Clear local alert cache? (Server history is kept in the database.)')) {
+    localStorage.removeItem('voltaAlertHistory');
+    loadHistory();
+  }
+}
+ 
+// ═══════════════════════════════════════════════════
+//  AI dispatch message composer
+// ═══════════════════════════════════════════════════
+async function composeAlertMessage(type, boatId, passenger, pax, vessel, lat, lon, time) {
+  const prompt = `You are an emergency dispatcher for the Volta Lake Authority in Ghana.
+A ${type} has been reported. Compose a concise, urgent dispatch message (2-3 sentences max) for the emergency response team. Include all key facts.
+ 
+Alert Type: ${type}
+Boat ID: ${boatId}
+Vessel Type: ${vessel}
+Passenger Reporting: ${passenger}
+People Onboard: ${pax}
+GPS: ${lat.toFixed(5)}, ${lon.toFixed(5)}
+Time: ${time}
+ 
+Respond with ONLY the dispatch message, no labels or prefixes.`;
+ 
+  try {
+    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        messages:   [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    return data.content?.[0]?.text || null;
+  } catch { return null; }
+}
+ 
+// ═══════════════════════════════════════════════════
+//  Main sendAlert — GPS → Backend → AI message → UI
+// ═══════════════════════════════════════════════════
+async function sendAlert(type, icon, phone) {
+  const boatId    = document.getElementById('boatId').value.trim();
+  const passenger = document.getElementById('passengerName').value.trim();
+  const pax       = document.getElementById('paxCount').value.trim() || 'Unknown';
+  const vessel    = document.getElementById('vesselType').value;
+ 
+  if (!boatId || !passenger) {
+    showToast('Please enter Boat ID and Passenger Name', 'error');
+    return;
+  }
+ 
+  const overlay     = document.getElementById('loadingOverlay');
+  const loadingText = document.getElementById('loadingText');
+  overlay.classList.add('active');
+ 
+  // ── Step 1: GPS ──────────────────────────────────
+  loadingText.textContent = 'Acquiring GPS signal...';
+  let lat, lon;
+  try {
+    const pos = await new Promise((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+    );
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+  } catch {
+    showToast('GPS unavailable — using demo coordinates', 'warn');
+    lat = 6.5244 + (Math.random() - 0.5) * 0.2;
+    lon = 0.1234 + (Math.random() - 0.5) * 0.2;
+  }
+ 
+  const time = new Date().toLocaleString('en-GH', { dateStyle: 'medium', timeStyle: 'short' });
+ 
+  // ── Step 2: Send to backend ───────────────────────
+  loadingText.textContent = 'Dispatching alert to server...';
+  let backendData = null;
+  let smsSent     = false;
+  let alertId     = null;
+ 
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/alert/send`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ type, boatId, passenger, paxCount: pax, vesselType: vessel, lat, lon, phone }),
+    });
+    backendData = await res.json();
+    smsSent     = backendData?.sms?.sent === true;
+    alertId     = backendData?.alertId;
+    console.log('✅ Backend response:', backendData);
+  } catch (err) {
+    console.warn('⚠️ Backend unreachable, saving locally only:', err.message);
+    showToast('Server offline — alert saved locally', 'warn');
+    saveToLocalCache({ type, boatId, passenger, pax, vessel, lat, lon, time, phone });
+  }
+ 
+  // ── Step 3: AI dispatch message ───────────────────
+  loadingText.textContent = 'Composing dispatch message...';
+  const aiMsg = await composeAlertMessage(type, boatId, passenger, pax, vessel, lat, lon, time);
+ 
+  overlay.classList.remove('active');
+ 
+  // ── Step 4: Render result card ────────────────────
+  const cfg      = ALERT_CONFIG[type];
+  const resultEl = document.getElementById('alertResult');
+ 
+  resultEl.innerHTML = `
+    <div class="result-header" style="background:${cfg.bg}">
+      <span style="font-size:24px">${cfg.icon}</span>
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:1px">${type}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.75)">
+          ${alertId ? `Alert #${alertId} saved to server` : 'Alert recorded locally'}
+          ${smsSent ? ' · 📱 SMS sent' : backendData ? ' · 📱 SMS failed' : ''}
+        </div>
+      </div>
+      <span style="margin-left:auto;font-size:20px">✅</span>
+    </div>
+    ${aiMsg ? `<div class="ai-message">
+      <div class="ai-label">🤖 AI Dispatch Message</div>
+      <div class="ai-text">${aiMsg}</div>
+    </div>` : ''}
+    <div class="result-body">
+      <div class="result-field"><div class="field-label">Boat ID</div><div class="field-val">${boatId}</div></div>
+      <div class="result-field"><div class="field-label">Vessel Type</div><div class="field-val">${vessel}</div></div>
+      <div class="result-field"><div class="field-label">Passenger</div><div class="field-val">${passenger}</div></div>
+      <div class="result-field"><div class="field-label">People Onboard</div><div class="field-val">${pax}</div></div>
+      <div class="result-field"><div class="field-label">Latitude</div><div class="field-val">${lat.toFixed(6)}</div></div>
+      <div class="result-field"><div class="field-label">Longitude</div><div class="field-val">${lon.toFixed(6)}</div></div>
+      <div class="result-field"><div class="field-label">Emergency Line</div><div class="field-val">${phone}</div></div>
+      <div class="result-field"><div class="field-label">Time</div><div class="field-val">${time}</div></div>
+    </div>
+    <div class="result-actions">
+      <a class="result-link link-map" href="https://www.google.com/maps?q=${lat},${lon}" target="_blank">📍 View on Google Maps</a>
+      <a class="result-link link-call" href="tel:${phone.replace(/\+/g,'')}">📞 Call Emergency Line</a>
+    </div>`;
+ 
+  resultEl.classList.add('active');
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+ 
+  // Refresh history from server
+  loadHistory();
+}
+ 
+// ═══════════════════════════════════════════════════
+//  Toast notification
+// ═══════════════════════════════════════════════════
+function showToast(msg, type = 'info') {
+  const t      = document.createElement('div');
+  const colors = { error: '#ff2d2d', warn: '#ff9500', info: '#00d4ff' };
+  t.style.cssText = `position:fixed;bottom:30px;left:50%;transform:translateX(-50%);
+    background:${colors[type]||colors.info};color:#fff;padding:12px 20px;border-radius:10px;
+    font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.4);
+    font-family:'Barlow',sans-serif;white-space:nowrap;`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+ 
+// ═══════════════════════════════════════════════════
+//  MOBILE NAV
+// ═══════════════════════════════════════════════════
+function mobileNav(tab, btn) {
+  // Vibrate on tap if supported
+  if (navigator.vibrate) navigator.vibrate(30);
+ 
+  document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+ 
+  // Hide all sections
+  document.querySelectorAll('.mobile-section').forEach(s => s.classList.remove('mobile-active'));
+  document.getElementById('alertResult')?.classList.remove('active');
+ 
+  if (tab === 'alert') {
+    document.getElementById('ms-alert').classList.add('mobile-active');
+    document.getElementById('ms-alert2').classList.add('mobile-active');
+  } else if (tab === 'history') {
+    document.getElementById('ms-history').classList.add('mobile-active');
+    loadHistory();
+  } else if (tab === 'info') {
+    document.getElementById('ms-info').classList.add('mobile-active');
+  }
+}
+ 
+// ═══════════════════════════════════════════════════
+//  Init
+// ═══════════════════════════════════════════════════
+checkBackendStatus();
+loadHistory();
+</script>
+ 
+<!-- Info section (mobile tab) -->
+<div class="card mobile-section" id="ms-info" style="margin-top:0">
+  <div class="card-title">ℹ️ Emergency Information</div>
+  <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">
+    <div style="background:rgba(0,0,0,0.2);border-radius:12px;padding:14px">
+      <div style="font-weight:700;margin-bottom:6px;font-size:14px">📞 Emergency Lines</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.8">
+        SOS / General: <a href="tel:+233241111111" style="color:var(--accent-cyan)">+233 24 111 1111</a><br>
+        Fire Response: <a href="tel:+233242222222" style="color:var(--accent-cyan)">+233 24 222 2222</a><br>
+        Medical: <a href="tel:+233243333333" style="color:var(--accent-cyan)">+233 24 333 3333</a><br>
+        Boat Sinking: <a href="tel:+233244444444" style="color:var(--accent-cyan)">+233 24 444 4444</a>
+      </div>
+    </div>
+    <div style="background:rgba(0,0,0,0.2);border-radius:12px;padding:14px">
+      <div style="font-weight:700;margin-bottom:6px;font-size:14px">🚤 How to Use</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.8">
+        1. Enter your Boat ID and your name<br>
+        2. Enter number of people onboard<br>
+        3. Select your vessel type<br>
+        4. Tap the correct emergency button<br>
+        5. Allow GPS when prompted<br>
+        6. Your location is sent automatically
+      </div>
+    </div>
+    <div style="background:rgba(255,124,0,0.08);border:1px solid rgba(255,124,0,0.2);border-radius:12px;padding:14px">
+      <div style="font-weight:700;margin-bottom:6px;font-size:14px;color:#ff9500">⚠️ Important</div>
+      <div style="font-size:13px;color:var(--text-secondary);line-height:1.7">
+        Only use this system for real emergencies on Volta Lake. False alerts divert rescue resources from people in genuine danger.
+      </div>
+    </div>
+    <div style="text-align:center;color:rgba(122,163,200,0.4);font-size:11px;letter-spacing:1px;padding:8px 0">
+      Volta Lake Emergency Response System © 2026
+    </div>
+  </div>
+</div>
+</body>
+</html>
+ 
